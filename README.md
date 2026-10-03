@@ -35,8 +35,8 @@ Unturned 在三处对"单页物品数量"做了硬编码护栏 `getItemCount() >
 3. **精确签名过滤**：全部目标使用显式参数签名解析，官方未来加重载不会引发 `AmbiguousMatchException`；方法名尽量用 `nameof` 绑定，游戏改名会在**编译期**暴露。
 4. **上下文感知 Transpiler + 计数断言**：只改写"前导 `call/callvirt getItemCount`、后随条件分支"的 `ldc.i4 200`（指令三元组匹配，兼容独立 if 与复合 `||` 条件两种版本形态），方法内出现的无关 200 常量不可能被误伤；每个目标的实际替换数与期望值（1 处）比对，漏改/多改都会在日志中报错。
 5. **模块化架构**：按职责划分为 `Configurations`（常量配置）、`Models`（目标定义与结果模型）、`Services`（目标解析 / Transpiler / 补丁装配）、`Monitors`（完整性自检日志），入口 `Module.cs` 只做装配。
-6. **NuGet 依赖迁移**：用 [`RocketModFix.Unturned.Redist.Server`](https://www.nuget.org/packages/RocketModFix.Unturned.Redist.Server)（游戏程序集）与 [`RocketModFix.UnityEngine.Redist`](https://www.nuget.org/packages/RocketModFix.UnityEngine.Redist)（基类链解析所需）替代无 HintPath 的裸 `Assembly-CSharp` 引用，clone 即可编译；二者均 `ExcludeAssets="runtime"`，不会把游戏/引擎 dll 复制进输出。未引入 `RocketModFix.LDM.Redist`（本模块不使用 Rocket API）。
-7. **Lib.Harmony 2.2.2 → 2.4.2**：获得 MonoMod.Core 三代升级带来的 Mono hook 稳定性修复（含 try/catch 方法 patch 修复）。Unturned 与 Rocket 均不自带 Harmony，`0Harmony.dll` 由本模块自带。
+6. **NuGet 依赖迁移**：用 [`RocketModFix.Unturned.Redist.Server`](https://www.nuget.org/packages/RocketModFix.Unturned.Redist.Server)（游戏程序集）与 [`RocketModFix.UnityEngine.Redist`](https://www.nuget.org/packages/RocketModFix.UnityEngine.Redist)（基类链解析所需）替代无 HintPath 的裸 `Assembly-CSharp` 引用，clone 即可编译；二者均 `ExcludeAssets="runtime"`，不会把游戏/引擎 dll 复制进输出。
+7. **Lib.Harmony 2.2.2 → 2.4.2**：获得 MonoMod.Core 三代升级带来的 Mono hook 稳定性修复（含 try/catch 方法 patch 修复）。
 8. **部署配置纳入版本管理**：`ItemCountExpander.module`（Role=Server）随仓库提供。
 
 ### 构建
@@ -102,8 +102,8 @@ Compared to upstream v1.x:
 3. **Explicit signature filtering**: every target is resolved with exact parameter types, so future game overloads cannot cause `AmbiguousMatchException`; method names use `nameof` where possible so renames fail at build time.
 4. **Context-aware transpiler + counted assertion**: only an `ldc.i4 200` preceded by a `call/callvirt getItemCount` and followed by a conditional branch is rewritten (instruction-triplet matching, compatible with both the standalone-if and compound-`||` shapes across game versions); unrelated 200 constants can never be hit, and the actual replacement count per target is compared against the expectation (1).
 5. **Modular architecture**: responsibilities split into `Configurations`, `Models`, `Services` (target resolution / transpiler / patch application) and `Monitors` (integrity logging); the `Module.cs` entry point only wires things together.
-6. **NuGet dependency migration**: [`RocketModFix.Unturned.Redist.Server`](https://www.nuget.org/packages/RocketModFix.Unturned.Redist.Server) (game assemblies) and [`RocketModFix.UnityEngine.Redist`](https://www.nuget.org/packages/RocketModFix.UnityEngine.Redist) (needed for base-type chain resolution) replace the bare `Assembly-CSharp` reference — the repo builds right after cloning. Both use `ExcludeAssets="runtime"` so no game/engine dll leaks into the output. `RocketModFix.LDM.Redist` is intentionally not referenced (no Rocket API usage).
-7. **Lib.Harmony 2.2.2 → 2.4.2**: picks up three generations of MonoMod.Core improvements for Mono hook stability (including the try/catch method patching fix). Since neither Unturned nor Rocket bundles Harmony, the module ships its own `0Harmony.dll`.
+6. **NuGet dependency migration**: [`RocketModFix.Unturned.Redist.Server`](https://www.nuget.org/packages/RocketModFix.Unturned.Redist.Server) (game assemblies) and [`RocketModFix.UnityEngine.Redist`](https://www.nuget.org/packages/RocketModFix.UnityEngine.Redist) (needed for base-type chain resolution) replace the bare `Assembly-CSharp` reference — the repo builds right after cloning. Both use `ExcludeAssets="runtime"` so no game/engine dll leaks into the output.
+7. **Lib.Harmony 2.2.2 → 2.4.2**: picks up three generations of MonoMod.Core improvements for Mono hook stability (including the try/catch method patching fix).
 8. **Deployment config in version control**: `ItemCountExpander.module` (Role=Server) is committed.
 
 ### Building
