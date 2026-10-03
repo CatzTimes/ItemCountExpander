@@ -1,38 +1,36 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Reflection.Emit;
 using HarmonyLib;
+using ItemCountExpander.Models;
+using ItemCountExpander.Monitors;
+using ItemCountExpander.Services;
 using SDG.Framework.Modules;
-using SDG.Unturned;
 
 namespace ItemCountExpander
 {
+    /// <summary>
+    /// Module entry point. Must stay a public non-abstract class with a public
+    /// parameterless constructor: ModuleHook instantiates IModuleNexus types via
+    /// Activator.CreateInstance and silently skips abstract (incl. static) ones.
+    /// </summary>
     public class Module : IModuleNexus
     {
-        private readonly Harmony HarmonyInstance = new Harmony(nameof(ItemCountExpander));
+        private readonly Harmony harmony = new Harmony(nameof(ItemCountExpander));
 
         public void initialize()
         {
-            var transpiler = new HarmonyMethod(typeof(Module), nameof(Transpiler));
-            HarmonyInstance.Patch(typeof(PlayerInventory).GetMethod("ReceiveDragItem"), transpiler: transpiler);
-            HarmonyInstance.Patch(typeof(PlayerInventory).GetMethod("tryAddItem", new Type[] { typeof(Item), typeof(byte), typeof(byte), typeof(byte), typeof(byte) }), transpiler: transpiler);
-            HarmonyInstance.Patch(typeof(Items).GetMethod("tryAddItem", new Type[] { typeof(Item), typeof(bool) }), transpiler: transpiler);
+            TargetResolutionResult resolution = TargetResolver.Resolve(PatchTargetDefinitions.InventoryLimits);
+            if (!resolution.AllResolved)
+            {
+                PatchIntegrityMonitor.ReportUnresolved(resolution);
+                return;
+            }
+
+            PatchOutcome[] outcomes = PatchApplier.Apply(harmony, resolution.Resolved);
+            PatchIntegrityMonitor.ReportOutcomes(outcomes);
         }
 
         public void shutdown()
         {
-            HarmonyInstance.UnpatchAll(HarmonyInstance.Id);
-        }
-
-        private static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
-        {
-            foreach (var inst in instructions)
-            {
-                if (inst.opcode == OpCodes.Ldc_I4 && (int)inst.operand == 200)
-                    inst.operand = 255;
-
-                yield return inst;
-            }
+            harmony.UnpatchAll(harmony.Id);
         }
     }
 }
